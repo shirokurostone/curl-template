@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"net/textproto"
 	"regexp"
@@ -131,4 +132,39 @@ func NewHttpRequest(r io.Reader) (*HttpRequest, error) {
 	req.Body = sb.String()
 
 	return req, nil
+}
+
+func shellstring(s string) string {
+	return fmt.Sprintf("'%s'", strings.ReplaceAll(s, `'`, `'\''`))
+}
+
+func (req *HttpRequest) CurlCommand(prettyprint bool) string {
+	command := []string{"curl"}
+
+	command = append(command, shellstring(req.URL))
+
+	if prettyprint {
+		command = append(command, "\\\n")
+	}
+
+	command = append(command, "-X", shellstring(req.Method))
+	if req.HttpVersion != DEFAULT_HTTP_VERSION {
+		command = append(command, req.HttpVersion.CurlOption())
+	}
+
+	for _, field := range req.Header {
+		if prettyprint {
+			command = append(command, "\\\n")
+		}
+		command = append(command, "-H", shellstring(fmt.Sprintf("%s: %s", field.Name, field.Value)))
+	}
+
+	if req.Body != "" {
+		if prettyprint {
+			command = append(command, "\\\n")
+		}
+		command = append(command, "-d", shellstring(req.Body))
+	}
+
+	return strings.Join(command, " ")
 }
