@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/textproto"
+	"os"
 	"regexp"
 	"strings"
 )
@@ -132,6 +133,16 @@ func NewHttpRequest(r io.Reader) (*HttpRequest, error) {
 	req.Body = sb.String()
 
 	return req, nil
+}
+
+func (req *HttpRequest) ExpandEnv() {
+	req.Method = os.ExpandEnv(req.Method)
+	req.URL = os.ExpandEnv(req.URL)
+	for i := 0; i < len(req.Header); i++ {
+		req.Header[i].Name = os.ExpandEnv(req.Header[i].Name)
+		req.Header[i].Value = os.ExpandEnv(req.Header[i].Value)
+	}
+	req.Body = os.ExpandEnv(req.Body)
 }
 
 func shellstring(s string) string {
