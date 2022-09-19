@@ -2,13 +2,17 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/textproto"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
+	"time"
 )
 
 type HttpVersion int
@@ -188,6 +192,78 @@ func (req *HttpRequest) ExpandEnv() {
 		req.Header[i].Value = os.ExpandEnv(req.Header[i].Value)
 	}
 	req.Body = os.ExpandEnv(req.Body)
+}
+
+func (req *HttpRequest) ExpandShell(ctx context.Context) error {
+
+	ctx, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
+	defer cancel()
+
+	method, err := execShellExpand(ctx, req.Method)
+	if err != nil {
+		return err
+	}
+
+	url, err := execShellExpand(ctx, req.URL)
+	if err != nil {
+		return err
+	}
+
+	header := []HeaderField{}
+	for _, field := range req.Header {
+		name, err := execShellExpand(ctx, field.Name)
+		if err != nil {
+			return err
+		}
+
+		value, err := execShellExpand(ctx, field.Value)
+		if err != nil {
+			return err
+		}
+		header = append(header, HeaderField{Name: name, Value: value})
+	}
+
+	body, err := execShellExpand(ctx, req.Body)
+	if err != nil {
+		return err
+	}
+
+	req.Method = method
+	req.URL = url
+	req.Header = header
+	req.Body = body
+
+	return nil
+}
+
+func execShellExpand(ctx context.Context, s string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "bash", "/dev/stdin")
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return "", err
+	}
+
+	go func() {
+		defer stdin.Close()
+		var eos string
+		for {
+			eos = fmt.Sprintf("EOS_%x", rand.Uint64())
+			if !strings.Contains(s, eos) {
+				break
+			}
+		}
+		io.WriteString(stdin, fmt.Sprintf("cat <<%s\n%s\n%s", eos, s, eos))
+	}()
+
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSuffix(fmt.Sprintf("%s", out), "\n"), nil
 }
 
 func shellstring(s string) string {
