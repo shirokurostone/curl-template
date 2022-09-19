@@ -97,6 +97,7 @@ func NewHttpRequest(r io.Reader) (*HttpRequest, error) {
 		break
 	}
 
+	req.Header = []HeaderField{}
 	for {
 		line, err = reader.ReadContinuedLine()
 		if err == io.EOF {
