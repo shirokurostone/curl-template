@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/textproto"
@@ -132,6 +133,50 @@ func NewHttpRequest(r io.Reader) (*HttpRequest, error) {
 	}
 	req.Body = sb.String()
 
+	return req, nil
+}
+
+type JsonConfig struct {
+	Method string            `json:"method"`
+	URL    string            `json:"url"`
+	Header map[string]string `json:"header"`
+	Body   any               `json:"body"`
+}
+
+func NewHttpRequestJson(r io.Reader) (*HttpRequest, error) {
+
+	b, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+
+	var d JsonConfig
+	if err = json.Unmarshal(b, &d); err != nil {
+		return nil, err
+	}
+
+	req := new(HttpRequest)
+
+	req.Method = d.Method
+	req.URL = d.URL
+	for n, v := range d.Header {
+		req.Header = append(req.Header, HeaderField{Name: n, Value: v})
+	}
+
+	if d.Body == nil {
+		req.Body = ""
+	} else {
+		switch v := d.Body.(type) {
+		case string:
+			req.Body = v
+		default:
+			body, err := json.Marshal(v)
+			if err != nil {
+				return nil, err
+			}
+			req.Body = string(body)
+		}
+	}
 	return req, nil
 }
 
