@@ -270,11 +270,11 @@ func shellstring(s string) string {
 	return fmt.Sprintf("'%s'", strings.ReplaceAll(s, `'`, `'\''`))
 }
 
-func (req *HttpRequest) CurlCommand(prettyprint bool, flags []string) string {
+func (req *HttpRequest) CurlCommand(prettyprint bool, flags string) string {
 	command := []string{"curl"}
 
-	if flags != nil {
-		command = append(command, flags...)
+	if flags != "" {
+		command = append(command, flags)
 	}
 
 	command = append(command, shellstring(req.URL))
