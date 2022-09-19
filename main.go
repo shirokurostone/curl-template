@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+var version = "0.0.1"
+
 func main() {
 	var flags string
 	flag.StringVar(&flags, "flags", "", "curl additional flags")
@@ -26,7 +28,16 @@ func main() {
 	flag.BoolVar(&prettyPrint, "prettyprint", false, "pretty print")
 	flag.BoolVar(&prettyPrint, "p", false, "prett yprint (short)")
 
+	var showVersion bool
+	flag.BoolVar(&showVersion, "version", false, "show version")
+	flag.BoolVar(&showVersion, "v", false, "show version")
+
 	flag.Parse()
+
+	if showVersion {
+		fmt.Printf("version : %s\n", version)
+		os.Exit(0)
+	}
 
 	if evalShellCommand && expandEnv {
 		flag.PrintDefaults()
